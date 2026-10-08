@@ -24,9 +24,15 @@ const maxLimit = 30;
 for (;;) {
   const res = await fetch(`${base}/admin/run?limit=${limit}&after=${encodeURIComponent(after)}`, { headers });
   if (!res.ok) {
+    const body = await res.text();
+    // D1 daily quota: retrying only burns requests until 00:00 UTC
+    if (/limit|exceeded|quota/i.test(body)) {
+      console.error(`D1 quota hit at ${after}: ${body.slice(0, 200)}`);
+      process.exit(2);
+    }
     // CPU limit (1102) or a D1 hiccup: retry smaller, then creep back up
     // and back off: D1 occasionally fails a burst of requests in a row
-    if (++fails > 30) throw new Error(`${res.status} at ${after}: ${(await res.text()).slice(0, 200)}`);
+    if (++fails > 30) throw new Error(`${res.status} at ${after}: ${body.slice(0, 200)}`);
     limit = Math.max(2, Math.floor(limit / 2));
     if (fails > 3) await new Promise((r) => setTimeout(r, 2000 * Math.min(fails, 15)));
     continue;
