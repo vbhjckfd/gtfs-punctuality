@@ -1,7 +1,7 @@
-import { summarize, summarizeBy, routeMode } from "./stats.js";
+import { summarize, summarizeBy, routeMode, EARLY_MAX, LATE_MIN, UNMATCHED_MIN } from "./stats.js";
 import { kyivDay } from "./time.js";
 
-const json = (body, maxAge = 300) => new Response(JSON.stringify(body), {
+const json = (body, maxAge = 60) => new Response(JSON.stringify(body), {
   headers: { "content-type": "application/json; charset=utf-8", "cache-control": `public, max-age=${maxAge}`, "access-control-allow-origin": "*" },
 });
 const bad = (msg, status = 400) => new Response(JSON.stringify({ error: msg }), { status, headers: { "content-type": "application/json" } });
@@ -30,6 +30,7 @@ async function summary(db, url) {
   for (const r of dayRows) histMap.set(r.bin, (histMap.get(r.bin) ?? 0) + r.n);
   const out = {
     from, days, route,
+    thresholds: { earlyMaxMin: EARLY_MAX, lateMinMin: LATE_MIN, unmatchedMin: UNMATCHED_MIN },
     total: summarize(dayRows),
     histogram: [...histMap.entries()].sort((a, b) => a[0] - b[0]).map(([bin, n]) => ({ bin, n })),
     byDay: summarizeBy(dayRows, "day").sort((a, b) => a.day.localeCompare(b.day)),

@@ -9,8 +9,15 @@ describe("summarize", () => {
     expect(s.p10Min).toBe(-5);
     expect(s.p90Min).toBe(3);
     expect(s.early).toBe(0.1);
-    expect(s.late).toBe(0.1);
-    expect(s.onTime).toBe(0.8);
+    expect(s.late).toBe(0.3); // +3 and +10 are both outside ±1 min
+    expect(s.onTime).toBe(0.6);
+  });
+
+  it("tolerates one minute either way", () => {
+    const s = summarize([{ bin: -2, n: 1 }, { bin: -1, n: 1 }, { bin: 0, n: 1 }, { bin: 1, n: 1 }, { bin: 2, n: 1 }]);
+    expect(s.early).toBe(0.2);
+    expect(s.onTime).toBe(0.6);
+    expect(s.late).toBe(0.2);
   });
 
   it("is safe on empty input", () => {

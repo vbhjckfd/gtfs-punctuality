@@ -37,7 +37,7 @@ The crossing instant is interpolated between the two GPS fixes, so the error is 
 
 Step 3 matters. Without it, buses that nudge 300 m along the kerb to a layover spot looked like departures 20 minutes early. Trips never seen standing at the terminus (the feed only starts carrying the `trip_id` once the vehicle is rolling) can't be measured and are skipped, so the numbers describe the measurable subset, and the dashboard shows how many observed terminus stops resolved to a departure.
 
-Summary buckets: **on time** −1…+5 min, **early** earlier than that, **late** later. Histograms use one-minute bins clamped to ±60 min.
+Summary buckets: **on time** within ±1 min of the plan, **early** earlier than that, **late** later. Bins are whole minutes (rounded), so "±1 min" means under 90 s off. The common −1…+5 min agency window is meant for mid-route stops; at the terminus the departure is fully in the operator's hands, so lateness counts from +2 min. Histograms use one-minute bins clamped to ±60 min.
 
 **Unmatched.** A departure more than 30 min off its plan is reported as *unmatched* and kept out of the medians, percentiles and shares. At that distance a vehicle carrying another trip's `trip_id` is a likelier explanation than a bus leaving half an hour early. On 2026-10-07 the share was ~1% for trams and trolleybuses and ~15% for buses.
 

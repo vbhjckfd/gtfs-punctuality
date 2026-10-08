@@ -1,12 +1,13 @@
 // Summaries computed from one-minute histogram bins (bin = round(delta / 60 s)).
-// On time = -1..+5 min, the usual transit-agency window; early / late are the
-// bins either side of it.
+// On time = within ±1 min of the plan (bins -1..+1, i.e. |delta| < 90 s): a
+// departure from the terminus is fully under the operator's control, so the
+// looser -1..+5 window used for mid-route stops would hide real lateness.
 //
 // A departure more than UNMATCHED_MIN off its planned time is more likely a
 // vehicle carrying another trip's id than a bus that really left half an hour
 // early, so it is counted apart and kept out of every other figure.
 export const EARLY_MAX = -2;
-export const LATE_MIN = 6;
+export const LATE_MIN = 2;
 export const UNMATCHED_MIN = 30;
 
 export const isUnmatched = (bin) => Math.abs(bin) > UNMATCHED_MIN;
