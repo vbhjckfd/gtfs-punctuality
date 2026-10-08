@@ -1,9 +1,9 @@
 import { handleApi } from "./api.js";
-import { processBatch } from "./process.js";
 
 export { Processor } from "./processor.js";
 
-const kick = (env) => env.PROCESSOR.get(env.PROCESSOR.idFromName("main")).kick();
+const processor = (env) => env.PROCESSOR.get(env.PROCESSOR.idFromName("main"));
+const kick = (env) => processor(env).kick();
 
 async function admin(request, env, url) {
   const auth = request.headers.get("authorization");
@@ -13,7 +13,8 @@ async function admin(request, env, url) {
     const limit = Math.min(40, parseInt(url.searchParams.get("limit") ?? "20", 10) || 20);
     const after = url.searchParams.get("after") ?? undefined;
     try {
-      return Response.json(await processBatch(env, { limit, startAfter: after }));
+      if (!after) return Response.json({ error: "missing ?after=" }, { status: 400 });
+      return Response.json(await processor(env).run({ limit, after }));
     } catch (err) {
       return Response.json({ error: String(err?.message ?? err), after }, { status: 500 });
     }

@@ -11,7 +11,10 @@ R2  gtfs-lviv/raw/YYYY-MM-DD/*.pb      GTFS-RT snapshots, ~every 10 s   (written
 Worker: decode → for each vehicle, distance to its trip's first stop → detect departure
         │
         ▼
-D1  departures   one row per (trip, planned time, vehicle), state machine below
+Durable Object memory: buses waiting at a terminus (pending state machine)
+        │  written once, when the departure is confirmed
+        ▼
+D1  departures   one row per confirmed (trip, planned time, vehicle)
     hist,        1-minute error histograms per day × route and per day × hour
     hist_hour    (the dashboard reads only these)
         ▲
@@ -76,11 +79,24 @@ Replay archived days through the deployed Worker (~30 snapshots per request):
 ADMIN_TOKEN=… node scripts/backfill.mjs https://gtfs-punctuality.<you>.workers.dev 2026-10-07 2026-10-08
 ```
 
-Departures are matched with the schedule currently in D1, so replay only days covered by the same static feed. Run one backfill at a time and never over the span the live loop is processing. D1 executes queries one by one, and two parallel replays plus the live loop overload it (persistent `1101`s). Overlapping the live loop can also count a departure twice.
+Departures are matched with the schedule currently in D1, so replay only days covered by the same static feed. Run one backfill at a time and never over the span the live loop is processing: each request replays inside the Processor, and a second backfill would share its replay memory. Mind the daily write budget above.
 
 ### Keeping the schedule fresh
 
 `.github/workflows/import-static.yml` re-imports daily and exits early when the archive hash is unchanged. It needs repository secrets `CLOUDFLARE_API_TOKEN` (D1 edit) and `CLOUDFLARE_ACCOUNT_ID`.
+
+## Staying inside the D1 free tier
+
+D1 Free allows **100k rows written and 5M rows read per day, per account**. The first version stored every waiting bus in D1 and rewrote its row on each 30-second batch: ~20 writes per departure, 313k writes on the first day, and D1 writes were blocked until midnight UTC. Now:
+
+* a waiting bus lives only in the Processor Durable Object's memory; D1 sees one `INSERT` per **confirmed** departure (+1 index row), plus histogram increments merged per batch;
+* keys of already-confirmed departures (for loop routes that return to their first stop) are loaded into memory once per ~18 h window, not queried per batch;
+* the live cursor and coverage counters are flushed every few minutes, or together with a departure write;
+* backfill runs through the same Durable Object queue as the live loop, so the two never race.
+
+Budget: roughly 4–5 rows written per departure, ~20–25k rows a day live. Leave headroom before backfilling: one replayed day costs about the same as one live day.
+
+If the object is evicted (a deploy, say), pending states are lost. Buses already waiting are picked up again at their next fix inside the radius; only a bus that leaves right after the restart goes unmeasured.
 
 ## Why no cron trigger
 
