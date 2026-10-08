@@ -76,7 +76,7 @@ Replay archived days through the deployed Worker (~30 snapshots per request):
 ADMIN_TOKEN=… node scripts/backfill.mjs https://gtfs-punctuality.<you>.workers.dev 2026-10-07 2026-10-08
 ```
 
-Departures are matched with the schedule currently in D1, so replay only days covered by the same static feed. Don't run it over the span the live loop is processing at the same moment, or a departure confirmed by both can be counted twice.
+Departures are matched with the schedule currently in D1, so replay only days covered by the same static feed. Run one backfill at a time and never over the span the live loop is processing. D1 executes queries one by one, and two parallel replays plus the live loop overload it (persistent `1101`s). Overlapping the live loop can also count a departure twice.
 
 ### Keeping the schedule fresh
 

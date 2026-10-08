@@ -12,7 +12,11 @@ async function admin(request, env, url) {
   if (url.pathname === "/admin/run") {
     const limit = Math.min(40, parseInt(url.searchParams.get("limit") ?? "20", 10) || 20);
     const after = url.searchParams.get("after") ?? undefined;
-    return Response.json(await processBatch(env, { limit, startAfter: after }));
+    try {
+      return Response.json(await processBatch(env, { limit, startAfter: after }));
+    } catch (err) {
+      return Response.json({ error: String(err?.message ?? err), after }, { status: 500 });
+    }
   }
   if (url.pathname === "/admin/cursor" && request.method === "POST") {
     const to = url.searchParams.get("to");
