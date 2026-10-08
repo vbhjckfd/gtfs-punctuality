@@ -41,8 +41,8 @@ function render(s, recent) {
     cov == null ? "" : kpi(`${cov}%`, "of observed terminus stops resolved to a departure"),
   ].join("");
   drawHistogram($("hist"), s.histogram);
-  drawBars($("hours"), s.byHour.map((h) => ({ label: String(h.hour), v: h.onTime, n: h.n })), "on-time share");
-  drawBars($("days-chart"), s.byDay.map((d) => ({ label: d.day.slice(5), v: d.onTime, n: d.n })), "on-time share");
+  drawBars($("hours"), s.byHour.map((h) => ({ label: String(h.hour), title: `${String(h.hour).padStart(2, "0")}:00–${String(h.hour).padStart(2, "0")}:59`, v: h.onTime, n: h.n })), "on-time share");
+  drawBars($("days-chart"), s.byDay.map((d) => ({ label: d.day.slice(5), title: d.day, v: d.onTime, n: d.n })), "on-time share");
   if (s.routes) drawRoutes(s.routes);
   $("recent").innerHTML = `<thead><tr><th>Route</th><th>Headsign</th><th>Planned</th><th>Actual</th><th>Error</th></tr></thead><tbody>${recent.map((d) => {
     const m = Math.round(d.delta_s / 60);
@@ -51,18 +51,24 @@ function render(s, recent) {
   }).join("")}</tbody>`;
 }
 
+function histTip(b, n, total, lo, hi) {
+  const range = b <= lo ? `${lo} min or earlier` : b >= hi ? `${hi} min or later` : b === 0 ? "on the minute (±30 s)" : `${b > 0 ? "+" : ""}${b} min (${b > 0 ? "late" : "early"})`;
+  return `${range}\n${n.toLocaleString("en")} departures · ${total ? ((100 * n) / total).toFixed(1) : 0}%`;
+}
+
 function drawHistogram(el, hist) {
   const lo = -30, hi = 30, W = 900, H = 200, pad = { l: 36, r: 8, t: 8, b: 24 };
   const byBin = new Map();
   for (const h of hist) byBin.set(Math.max(lo, Math.min(hi, h.bin)), (byBin.get(Math.max(lo, Math.min(hi, h.bin))) ?? 0) + h.n);
   const max = Math.max(...byBin.values());
+  const total = [...byBin.values()].reduce((a, b) => a + b, 0);
   const bw = (W - pad.l - pad.r) / (hi - lo + 1);
   let out = "";
   for (let b = lo; b <= hi; b++) {
     const n = byBin.get(b) ?? 0;
     const h = (n / max) * (H - pad.t - pad.b);
     const fill = b <= -2 ? "var(--early)" : b >= 6 ? "var(--late)" : "var(--ok)";
-    out += `<rect x="${pad.l + (b - lo) * bw + 1}" y="${H - pad.b - h}" width="${bw - 2}" height="${h}" fill="${fill}"><title>${b} min: ${n}</title></rect>`;
+    out += `<rect x="${pad.l + (b - lo) * bw + 1}" y="${H - pad.b - h}" width="${bw - 2}" height="${h}" fill="${fill}"/><rect class="hit" x="${pad.l + (b - lo) * bw}" y="${pad.t}" width="${bw}" height="${H - pad.t - pad.b}" data-tip="${esc(histTip(b, n, total, lo, hi))}"/>`;
   }
   for (const b of [-30, -20, -10, 0, 10, 20, 30]) out += `<text x="${pad.l + (b - lo + 0.5) * bw}" y="${H - 6}" text-anchor="middle">${b === lo ? "≤" : b === hi ? "≥" : ""}${b}</text>`;
   out += `<text x="4" y="14">${max}</text>`;
@@ -77,7 +83,7 @@ function drawBars(el, items, label) {
   for (const y of [0, 0.5, 1]) out += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${H - pad.b - y * (H - pad.t - pad.b)}" y2="${H - pad.b - y * (H - pad.t - pad.b)}" stroke="var(--line)"/><text x="2" y="${H - pad.b - y * (H - pad.t - pad.b) + 4}">${y * 100}%</text>`;
   items.forEach((it, i) => {
     const h = it.v * (H - pad.t - pad.b);
-    out += `<rect x="${pad.l + i * bw + 1}" y="${H - pad.b - h}" width="${Math.max(1, bw - 2)}" height="${h}" fill="var(--ok)" opacity="${it.n < 20 ? 0.4 : 1}"><title>${it.label}: ${(it.v * 100).toFixed(0)}% ${label} (n=${it.n})</title></rect>`;
+    out += `<rect x="${pad.l + i * bw + 1}" y="${H - pad.b - h}" width="${Math.max(1, bw - 2)}" height="${h}" fill="var(--ok)" opacity="${it.n < 20 ? 0.4 : 1}"/><rect class="hit" x="${pad.l + i * bw}" y="${pad.t}" width="${bw}" height="${H - pad.t - pad.b}" data-tip="${esc(`${it.title ?? it.label}\n${(it.v * 100).toFixed(0)}% ${label}\n${it.n.toLocaleString("en")} departures${it.n < 20 ? " (few — unreliable)" : ""}`)}"/>`;
     if (items.length <= 24 || i % Math.ceil(items.length / 12) === 0) out += `<text x="${pad.l + (i + 0.5) * bw}" y="${H - 6}" text-anchor="middle">${it.label}</text>`;
   });
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${out}</svg>`;
@@ -100,3 +106,18 @@ $("routes").addEventListener("click", (e) => {
   if (tr) { state.route = tr.dataset.route; $("filter-name").textContent = tr.dataset.name; load(); scrollTo({ top: 0, behavior: "smooth" }); }
 });
 load().catch((e) => { $("status").textContent = `failed to load: ${e.message}`; });
+
+const tip = document.createElement("div");
+tip.id = "tip";
+tip.hidden = true;
+document.body.append(tip);
+document.addEventListener("mousemove", (e) => {
+  const t = e.target.closest?.("[data-tip]");
+  if (!t) { tip.hidden = true; return; }
+  tip.textContent = t.dataset.tip;
+  tip.hidden = false;
+  const w = tip.offsetWidth;
+  tip.style.left = `${Math.min(e.clientX + 14, innerWidth - w - 8)}px`;
+  tip.style.top = `${e.clientY + 16}px`;
+});
+document.addEventListener("mouseleave", () => { tip.hidden = true; });
