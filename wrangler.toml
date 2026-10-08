@@ -1,0 +1,38 @@
+name = "gtfs-punctuality"
+main = "src/worker.js"
+compatibility_date = "2026-06-01"
+
+# Dashboard (public/) is served from the edge; only /api/* and /admin/* reach the script.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/admin/*"]
+
+# Raw GTFS-RT snapshots archived by gtfs-collector (read-only use).
+[[r2_buckets]]
+binding = "RAW"
+bucket_name = "gtfs-lviv"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "punctuality"
+database_id = "9d0fea43-ec67-4501-9acf-96a0a60dd6b6"
+migrations_dir = "migrations"
+
+# Processing loop: a Durable Object alarm every INTERVAL_SEC (no cron trigger,
+# see src/processor.js).
+[[durable_objects.bindings]]
+name = "PROCESSOR"
+class_name = "Processor"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Processor"]
+
+[vars]
+INTERVAL_SEC = "30"
+BATCH_SNAPSHOTS = "10"       # snapshots consumed per alarm (~3 arrive per 30 s)
+KEEP_DEPARTURE_DAYS = "45"   # per-departure rows; the aggregates are kept forever
+
+[observability]
+enabled = true

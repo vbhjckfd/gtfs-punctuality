@@ -1,0 +1,39 @@
+:root {
+  --bg: #fafaf7; --card: #fff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e4e3dd;
+  --early: #3b82c4; --ok: #2f9e6b; --late: #d4553a; --accent: #1c1c1a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #141412; --card: #1d1d1a; --ink: #ecebe5; --muted: #9a9992; --line: #2c2c28; --early: #5aa2e0; --ok: #46b887; --late: #e8745a; --accent: #ecebe5; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header, main, footer { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+header { padding-top: 28px; }
+h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 0.95rem; margin: 0 0 12px; font-weight: 600; }
+.sub, .muted { color: var(--muted); }
+.sub { margin: 0 0 16px; }
+.muted { font-size: 0.85rem; }
+.controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+select, button { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; }
+button { cursor: pointer; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.kpi, .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.card { margin-bottom: 12px; }
+.kpi .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -0.02em; }
+.kpi .l { color: var(--muted); font-size: 0.82rem; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-weight: 600; font-size: 0.8rem; color: var(--muted); cursor: pointer; user-select: none; }
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover { background: color-mix(in srgb, var(--line) 40%, transparent); }
+.early { color: var(--early); } .late { color: var(--late); } .ok { color: var(--ok); }
+svg { width: 100%; height: auto; display: block; }
+svg text { fill: var(--muted); font-size: 11px; }
+footer { padding-bottom: 40px; color: var(--muted); font-size: 0.85rem; }
+a { color: inherit; }
+#filter button b { margin: 0 2px; }

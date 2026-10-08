@@ -1,0 +1,23 @@
+{
+  "name": "gtfs-punctuality",
+  "version": "0.1.0",
+  "description": "How late (or early) Lviv buses actually leave the terminus compared with the GTFS static timetable. Cloudflare Workers + D1.",
+  "type": "module",
+  "private": true,
+  "license": "WTFPL",
+  "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "git+https://github.com/vbhjckfd/gtfs-punctuality.git" },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "db:migrate": "wrangler d1 migrations apply punctuality --remote",
+    "db:migrate:local": "wrangler d1 migrations apply punctuality --local",
+    "static:import": "node scripts/import-static.mjs",
+    "backfill": "node scripts/backfill.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10",
+    "wrangler": "^4.115.0"
+  }
+}

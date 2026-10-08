@@ -1,0 +1,98 @@
+# gtfs-punctuality
+
+How late (or early) do Lviv buses really leave the terminus, compared with the **GTFS static timetable**?
+
+Built from the vehicle-position snapshots that [`gtfs-collector`](https://github.com/vbhjckfd/gtfs-collector) archives to Cloudflare R2. Runs entirely on Cloudflare (Workers + D1 + Durable Objects) and fits the free plan.
+
+```
+R2  gtfs-lviv/raw/YYYY-MM-DD/*.pb      GTFS-RT snapshots, ~every 10 s   (written by gtfs-collector)
+        │  Durable Object alarm, every 30 s: next ≤10 snapshots after a stored cursor
+        ▼
+Worker: decode → for each vehicle, distance to its trip's first stop → detect departure
+        │
+        ▼
+D1  departures   one row per (trip, planned time, vehicle), state machine below
+    hist,        1-minute error histograms per day × route and per day × hour
+    hist_hour    (the dashboard reads only these)
+        ▲
+        │  scripts/import-static.mjs   (GitHub Actions, daily; skips unchanged archives)
+GTFS static: trips → first stop (lat/lon) + planned departure time
+        │
+        ▼
+GET /api/summary  /api/recent  /api/health   +  static dashboard in public/
+```
+
+## What counts as a departure
+
+For every vehicle the Worker measures the distance to the **first stop of the trip it is running**. A departure is recorded only when the vehicle
+
+1. was seen within **50 m** of that stop,
+2. left the radius, with the next fix no more than **90 s** after the last one inside,
+3. and was seen more than **1 km** away within **10 minutes** of leaving.
+
+The crossing instant is interpolated between the two GPS fixes, so the error is a few seconds, not the 10 s polling step. `delta = actual − planned`; positive is late. The planned time is the trip's first `departure_time`, resolved against the Kyiv service day (trips past `24:00` belong to the previous day).
+
+Step 3 matters. Without it, buses that nudge 300 m along the kerb to a layover spot looked like departures 20 minutes early. Trips never seen standing at the terminus (the feed only starts carrying the `trip_id` once the vehicle is rolling) can't be measured and are skipped, so the numbers describe the measurable subset, and the dashboard shows how many observed terminus stops resolved to a departure.
+
+Summary buckets: **on time** −1…+5 min, **early** earlier than that, **late** later. Histograms use one-minute bins clamped to ±60 min.
+
+Ghost entities (a feed that republishes a vehicle whose own timestamp is hours old) are dropped when they trail the feed header by more than 120 s.
+
+## Endpoints
+
+| Path | |
+|---|---|
+| `/` | dashboard: distribution, by hour, by day, route table (click a route to filter), latest departures |
+| `/api/summary?days=7[&route=<route_id>]` | totals, histogram, by day / hour / route (≤ 90 days) |
+| `/api/recent?limit=50[&route=<route_id>]` | latest measured departures |
+| `/api/health` | `200` when the cursor is < 10 min behind the archive; also restarts the alarm chain if it stopped |
+
+## Setup
+
+Needs Node ≥ 22 and a Cloudflare account that owns (or can read) the collector's R2 bucket.
+
+```sh
+npm ci
+npx wrangler d1 create punctuality           # put the id in wrangler.toml
+npm run db:migrate
+npm run static:import                        # schedule → D1 (downloads track.ua-gis.com/gtfs/lviv/static.zip)
+npm run deploy
+echo "$(openssl rand -hex 24)" | npx wrangler secret put ADMIN_TOKEN
+```
+
+The first request to `/api/health` (or `GET /admin/kick` with the token) starts the processing loop. It begins two minutes behind "now" unless a cursor is stored.
+
+`wrangler.toml` binds the bucket `gtfs-lviv`; change `bucket_name` if yours differs.
+
+### Backfill
+
+Replay archived days through the deployed Worker (~30 snapshots per request):
+
+```sh
+ADMIN_TOKEN=… node scripts/backfill.mjs https://gtfs-punctuality.<you>.workers.dev 2026-10-07 2026-10-08
+```
+
+Departures are matched with the schedule currently in D1, so replay only days covered by the same static feed. Don't run it over the span the live loop is processing at the same moment, or a departure confirmed by both can be counted twice.
+
+### Keeping the schedule fresh
+
+`.github/workflows/import-static.yml` re-imports daily and exits early when the archive hash is unchanged. It needs repository secrets `CLOUDFLARE_API_TOKEN` (D1 edit) and `CLOUDFLARE_ACCOUNT_ID`.
+
+## Why no cron trigger
+
+The Workers Free plan allows five cron triggers per account. A Durable Object alarm (SQLite-backed, free) re-arms itself every `INTERVAL_SEC` instead — the same trick [gtfs-eta](https://github.com/vbhjckfd/gtfs-eta) uses for its feed watchdog. Per run the Worker makes ~25 subrequests (R2 list + gets, D1) against the free-plan limit of 50.
+
+## Limits
+
+* Free plan CPU is 10 ms per invocation; `BATCH_SNAPSHOTS` is kept small for that reason. Raise it on a paid plan to catch up faster.
+* `departures` rows are pruned after `KEEP_DEPARTURE_DAYS` (45); the histograms are kept.
+* Delay is only measured at the first stop. Mid-route punctuality is a different question (see [gtfs-eta](https://github.com/vbhjckfd/gtfs-eta)).
+
+## Development
+
+```sh
+npm test      # detection state machine, protobuf decoder, Kyiv time, stats
+npm run dev   # wrangler dev
+```
+
+WTFPL.
