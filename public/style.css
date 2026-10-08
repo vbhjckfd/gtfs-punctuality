@@ -41,3 +41,4 @@ a { color: inherit; }
 .hit:hover { fill: color-mix(in srgb, var(--ink) 10%, transparent); }
 #tip { position: fixed; z-index: 10; pointer-events: none; white-space: pre; background: var(--ink); color: var(--bg); padding: 6px 9px; border-radius: 6px; font-size: 0.8rem; line-height: 1.35; box-shadow: 0 2px 8px rgb(0 0 0 / 0.25); }
 #tip[hidden] { display: none; }
+.kpi .v.muted-v { color: var(--muted); }

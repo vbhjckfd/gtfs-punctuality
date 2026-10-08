@@ -18,6 +18,11 @@ describe("Kyiv time", () => {
     expect(planned).toBe(Date.UTC(2026, 6, 1, 21, 5) / 1000);
   });
 
+  it("matches a bus waiting before midnight to tomorrow's early trip", () => {
+    const obs = Date.UTC(2026, 6, 1, 20, 50) / 1000; // 23:50 Kyiv on 1 July
+    expect(plannedTs(obs, 30 * 60)).toBe(Date.UTC(2026, 6, 1, 21, 30) / 1000); // 00:30 on 2 July
+  });
+
   it("matches an ordinary trip to today", () => {
     const obs = Date.UTC(2026, 6, 1, 6, 0) / 1000; // 09:00 Kyiv
     expect(plannedTs(obs, 9 * 3600 + 60)).toBe(Date.UTC(2026, 6, 1, 6, 1) / 1000);

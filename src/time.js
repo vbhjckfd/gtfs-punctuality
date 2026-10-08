@@ -45,13 +45,16 @@ export function kyivHour(unix) {
 /**
  * Planned departure instant for a trip observed at `obsTs`. GTFS times run past
  * 24:00 for trips after midnight, so a bus seen at 00:10 may belong to
- * yesterday's service day: of today's and yesterday's candidates, take the
- * one closest to the observation.
+ * yesterday's service day, and a bus waiting at 23:50 for a 00:30 departure
+ * belongs to tomorrow's. Of the three candidates take the closest.
  */
 export function plannedTs(obsTs, firstDepSec) {
   const today = kyivDay(obsTs);
   const yesterday = kyivDay(today.midnight - 3600);
-  const a = today.midnight + firstDepSec;
-  const b = yesterday.midnight + firstDepSec;
-  return Math.abs(obsTs - a) <= Math.abs(obsTs - b) ? a : b;
+  const tomorrow = kyivDay(today.midnight + 26 * 3600); // +26 h clears a DST day
+  let best = today.midnight + firstDepSec;
+  for (const c of [yesterday.midnight + firstDepSec, tomorrow.midnight + firstDepSec]) {
+    if (Math.abs(obsTs - c) < Math.abs(obsTs - best)) best = c;
+  }
+  return best;
 }

@@ -1,4 +1,4 @@
-import { summarize, summarizeBy } from "./stats.js";
+import { summarize, summarizeBy, routeMode } from "./stats.js";
 import { kyivDay } from "./time.js";
 
 const json = (body, maxAge = 300) => new Response(JSON.stringify(body), {
@@ -21,7 +21,7 @@ async function summary(db, url) {
   const [byDayBin, hourBin, routeBin, cov] = await Promise.all([
     db.prepare(`SELECT day, bin, SUM(n) n FROM hist WHERE day >= ?${rf} GROUP BY day, bin`).bind(...args).all(),
     route ? null : db.prepare("SELECT hour, bin, SUM(n) n FROM hist_hour WHERE day >= ? GROUP BY hour, bin").bind(from).all(),
-    route ? null : db.prepare("SELECT h.route_id, r.short_name, h.bin, SUM(h.n) n FROM hist h JOIN routes r USING (route_id) WHERE h.day >= ? GROUP BY h.route_id, h.bin").bind(from).all(),
+    route ? null : db.prepare("SELECT h.route_id, r.short_name, r.route_type, h.bin, SUM(h.n) n FROM hist h JOIN routes r USING (route_id) WHERE h.day >= ? GROUP BY h.route_id, h.bin").bind(from).all(),
     db.prepare("SELECT SUM(seen) seen, SUM(confirmed) confirmed FROM coverage WHERE day >= ?").bind(from).first(),
   ]);
 
@@ -37,8 +37,10 @@ async function summary(db, url) {
   };
   if (hourBin) out.byHour = summarizeBy(hourBin.results, "hour").sort((a, b) => a.hour - b.hour);
   if (routeBin) {
-    out.routes = summarizeBy(routeBin.results, "route_id", (id) => ({ shortName: routeBin.results.find((r) => r.route_id === id).short_name }))
-      .sort((a, b) => b.n - a.n);
+    const rows = routeBin.results.map((r) => ({ ...r, mode: routeMode(r.route_type, r.short_name) }));
+    out.routes = summarizeBy(rows, "route_id", (_, r) => ({ shortName: r.short_name, mode: r.mode })).sort((a, b) => b.n - a.n);
+    const order = ["tram", "trolleybus", "bus"];
+    out.byMode = summarizeBy(rows, "mode").sort((a, b) => order.indexOf(a.mode) - order.indexOf(b.mode));
   }
   return json(out);
 }
@@ -68,11 +70,18 @@ async function health(db) {
   return new Response(JSON.stringify(body), { status: body.ok ? 200 : 503, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 }
 
+// caches.default is a no-op on *.workers.dev, so keep a short per-isolate memo
+// as well; the edge cache takes over once the Worker sits on a custom domain.
+const MEMO_TTL = 60_000;
+const memo = new Map(); // url -> { at, body, headers }
+
 export async function handleApi(request, env, ctx) {
   const url = new URL(request.url);
   if (request.method !== "GET") return bad("method not allowed", 405);
   if (url.pathname === "/api/health") return health(env.DB);
 
+  const m = memo.get(request.url);
+  if (m && Date.now() - m.at < MEMO_TTL) return new Response(m.body, { headers: m.headers });
   const cache = caches.default;
   const hit = await cache.match(request);
   if (hit) return hit;
@@ -80,6 +89,9 @@ export async function handleApi(request, env, ctx) {
   if (url.pathname === "/api/summary") res = await summary(env.DB, url);
   else if (url.pathname === "/api/recent") res = await recent(env.DB, url);
   else return bad("not found", 404);
+  const body = await res.clone().text();
+  if (memo.size > 500) memo.clear();
+  memo.set(request.url, { at: Date.now(), body, headers: [...res.headers] });
   ctx.waitUntil(cache.put(request, res.clone()));
   return res;
 }

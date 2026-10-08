@@ -36,6 +36,10 @@ Step 3 matters. Without it, buses that nudge 300 m along the kerb to a layover s
 
 Summary buckets: **on time** −1…+5 min, **early** earlier than that, **late** later. Histograms use one-minute bins clamped to ±60 min.
 
+**Unmatched.** A departure more than 30 min off its plan is reported as *unmatched* and kept out of the medians, percentiles and shares. At that distance a vehicle carrying another trip's `trip_id` is a likelier explanation than a bus leaving half an hour early. On 2026-10-07 the share was ~1% for trams and trolleybuses and ~15% for buses.
+
+**Modes.** Lviv publishes trolleybuses as `route_type = 3` (bus) with a `Тр` prefix, so the mode is derived from both. Results differ sharply by mode. Trams and trolleybuses run at ~85% on time with ~1% unmatched. Buses still leave early about two times in three even after unmatched departures are removed. That is either a real practice or a schedule the buses don't follow, and these data can't tell which.
+
 Ghost entities (a feed that republishes a vehicle whose own timestamp is hours old) are dropped when they trail the feed header by more than 120 s.
 
 ## Endpoints
@@ -43,7 +47,7 @@ Ghost entities (a feed that republishes a vehicle whose own timestamp is hours o
 | Path | |
 |---|---|
 | `/` | dashboard: distribution, by hour, by day, route table (click a route to filter), latest departures |
-| `/api/summary?days=7[&route=<route_id>]` | totals, histogram, by day / hour / route (≤ 90 days) |
+| `/api/summary?days=7[&route=<route_id>]` | totals, histogram, by day / hour / mode / route (≤ 90 days); every summary carries `unmatched` and `unmatchedShare` |
 | `/api/recent?limit=50[&route=<route_id>]` | latest measured departures |
 | `/api/health` | `200` when the cursor is < 10 min behind the archive; also restarts the alarm chain if it stopped |
 
@@ -85,6 +89,7 @@ The Workers Free plan allows five cron triggers per account. A Durable Object al
 ## Limits
 
 * Free plan CPU is 10 ms per invocation; `BATCH_SNAPSHOTS` is kept small for that reason. Raise it on a paid plan to catch up faster.
+* `caches.default` is a no-op on `*.workers.dev`; API responses are also memoised per isolate for 60 s. On a custom domain the edge cache takes over.
 * `departures` rows are pruned after `KEEP_DEPARTURE_DAYS` (45); the histograms are kept.
 * Delay is only measured at the first stop. Mid-route punctuality is a different question (see [gtfs-eta](https://github.com/vbhjckfd/gtfs-eta)).
 

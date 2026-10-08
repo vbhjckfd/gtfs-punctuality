@@ -21,16 +21,17 @@
 </header>
 <main>
   <section id="kpis" class="kpis"></section>
-  <section class="card"><h2>Departure error distribution</h2><div id="hist"></div><p class="muted">Minutes after (+) or before (−) the planned time. Bars outside −1…+5 min count as early / late.</p></section>
+  <section class="card"><h2>Departure error distribution</h2><div id="hist"></div><p class="muted">Minutes after (+) or before (−) the planned time. Bars outside −1…+5 min count as early / late. The grey bars at either end (“?”) are departures more than 30 min off the plan: most likely a vehicle carrying another trip's id, so they are left out of every figure.</p></section>
   <div class="grid">
     <section class="card"><h2>By hour of day</h2><div id="hours"></div></section>
     <section class="card"><h2>By day</h2><div id="days-chart"></div></section>
   </div>
+  <section class="card" id="modes-card"><h2>By mode</h2><div class="scroll"><table id="modes"></table></div></section>
   <section class="card" id="routes-card"><h2>Routes</h2><div class="scroll"><table id="routes"></table></div></section>
   <section class="card"><h2>Latest measured departures</h2><div class="scroll"><table id="recent"></table></div></section>
 </main>
 <footer>
-  <p><b>How it is measured.</b> A departure counts when a vehicle running a trip is seen within 50 m of that trip's first stop, then drives off and is seen more than 1 km away within 10 minutes. The crossing instant is interpolated between GPS fixes (about 10 s apart). Buses that only shuffle along the kerb, or that vanish from the feed, are not counted. On time = −1…+5 min.</p>
+  <p><b>How it is measured.</b> A departure counts when a vehicle running a trip is seen within 50 m of that trip's first stop, then drives off and is seen more than 1 km away within 10 minutes. The crossing instant is interpolated between GPS fixes (about 10 s apart). Buses that only shuffle along the kerb, or that vanish from the feed, are not counted. On time = −1…+5 min. Departures more than 30 min off are reported as unmatched and kept out of the medians and shares.</p>
   <p>Data: <a href="https://github.com/vbhjckfd/gtfs-collector">gtfs-collector</a> archive · <a href="https://github.com/vbhjckfd/gtfs-punctuality">source</a></p>
 </footer>
 <script src="app.js" type="module"></script>

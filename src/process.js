@@ -5,14 +5,19 @@ import { step, MAX_STALE, IN_RADIUS } from "./detect.js";
 
 const CHUNK_IN = 80;          // ids per IN (...) — D1 allows 100 bound parameters
 const MAX_TRIP_CACHE = 60000;
+const TRIP_CACHE_TTL = 10 * 60_000; // a re-imported schedule is picked up within this
 const tripCache = new Map();  // trip_id -> trip row | null, survives across invocations of one isolate
+let tripCacheBorn = Date.now();
 
 const chunks = (a, n) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 const marks = (n) => Array(n).fill("?").join(",");
 
 async function loadTrips(db, ids) {
+  if (Date.now() - tripCacheBorn > TRIP_CACHE_TTL || tripCache.size + ids.length > MAX_TRIP_CACHE) {
+    tripCache.clear();
+    tripCacheBorn = Date.now();
+  }
   const missing = ids.filter((id) => !tripCache.has(id));
-  if (tripCache.size + missing.length > MAX_TRIP_CACHE) tripCache.clear();
   const rows = await Promise.all(chunks(missing, CHUNK_IN).map((c) =>
     db.prepare(`SELECT trip_id, route_id, first_lat, first_lon, first_dep_sec FROM trips WHERE trip_id IN (${marks(c.length)})`).bind(...c).all()));
   for (const id of missing) tripCache.set(id, null);
