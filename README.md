@@ -103,7 +103,9 @@ D1 Free allows **100k rows written and 5M rows read per day, per account**. The 
 * the live cursor and coverage counters are flushed every few minutes, or together with a departure write;
 * backfill runs through the same Durable Object queue as the live loop, so the two never race.
 
-Budget: roughly 4–5 rows written per departure, ~20–25k rows a day live. Leave headroom before backfilling: one replayed day costs about the same as one live day.
+Budget: 4 rows written per departure (row, its index entry, two histogram increments). A weekday is ~5k departures, so ~20k rows live; a replayed day costs the same. On 2026-10-09 the live day plus six replayed days crossed the 100k cap: keep backfills to two or three days per UTC day.
+
+When a write fails (say, the daily cap), the loop backs off to one attempt every 5 min and keeps its stored position. Once writes work again it runs batches back to back until it has caught up with the archive. `/admin/state` shows the last error.
 
 `GET /admin/state` (with the token) shows the stored contexts: pending buses, recently confirmed keys and cursor per stream, plus the instance's `bornAt`.
 

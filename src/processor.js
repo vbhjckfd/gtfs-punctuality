@@ -16,7 +16,7 @@ const STREAMS = ["live", "replay"];
 export class Processor extends DurableObject {
   #cx = {};
   #queue = Promise.resolve();
-  #diag = { bornAt: new Date().toISOString(), liveBatches: 0, liveConfirmed: 0, lastError: null, lastErrorAt: null };
+  #diag = { bornAt: new Date().toISOString(), liveBatches: 0, liveConfirmed: 0 };
 
   #serial(fn) {
     const run = this.#queue.then(fn, fn);
@@ -40,8 +40,8 @@ export class Processor extends DurableObject {
       return stat;
     } catch (err) {
       delete this.#cx[name]; // reload the last stored state next time
-      this.#diag.lastError = `${name}: ${String(err?.message ?? err)}`;
-      this.#diag.lastErrorAt = new Date().toISOString();
+      // stored, not just in memory: the object is evicted between alarms
+      await this.ctx.storage.put("lastError", { stream: name, message: String(err?.message ?? err), at: new Date().toISOString() });
       throw err;
     }
   }
@@ -52,7 +52,7 @@ export class Processor extends DurableObject {
   }
 
   async state() {
-    const out = { ...this.#diag };
+    const out = { ...this.#diag, lastError: (await this.ctx.storage.get("lastError")) ?? null };
     for (const n of STREAMS) {
       const cx = await this.#context(n);
       out[n] = { pending: cx.pending.size, done: cx.done.size, cursor: cx.cursor };
@@ -65,20 +65,26 @@ export class Processor extends DurableObject {
     return this.#serial(() => this.#batch("replay", { limit, startAfter: after }));
   }
 
+  // Re-arm: right away while behind the archive (catch-up after an outage),
+  // the normal interval when caught up, and slowly after an error (a D1 daily
+  // quota block lasts until 00:00 UTC; retrying every 30 s only burns requests).
   async alarm() {
     const every = parseInt(this.env.INTERVAL_SEC ?? "30", 10) * 1000;
+    let next = every;
     try {
       await this.#serial(async () => {
         const stat = await this.#batch("live", { limit: parseInt(this.env.BATCH_SNAPSHOTS ?? "10", 10) });
         this.#diag.liveBatches++;
         this.#diag.liveConfirmed += stat.confirmed;
         console.log(JSON.stringify({ evt: "batch", ...stat }));
+        if (!stat.caughtUp) next = 2000;
         await this.#maybePrune();
       });
     } catch (err) {
+      next = 5 * 60_000;
       console.error(JSON.stringify({ evt: "batch_error", message: String(err?.message ?? err) }));
     } finally {
-      await this.ctx.storage.setAlarm(Date.now() + every);
+      await this.ctx.storage.setAlarm(Date.now() + next);
     }
   }
 
