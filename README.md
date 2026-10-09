@@ -83,7 +83,16 @@ Departures are matched with the schedule currently in D1, so replay only days co
 
 ### Keeping the schedule fresh
 
-`.github/workflows/import-static.yml` re-imports daily and exits early when the archive hash is unchanged. It needs repository secrets `CLOUDFLARE_API_TOKEN` (D1 edit) and `CLOUDFLARE_ACCOUNT_ID`.
+`.github/workflows/import-static.yml` re-imports daily and exits early when the archive hash is unchanged. It needs two repository secrets:
+
+1. Create an API token at dash.cloudflare.com → My Profile → API Tokens → *Create Custom Token*, permission **Account · D1 · Edit**, scoped to your account.
+2. Store it and the account id:
+
+```sh
+gh secret set CLOUDFLARE_API_TOKEN            # paste the token when prompted
+gh secret set CLOUDFLARE_ACCOUNT_ID --body <account id from `npx wrangler whoami`>
+gh workflow run import-static.yml
+```
 
 ## Staying inside the D1 free tier
 
