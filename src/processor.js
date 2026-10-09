@@ -1,19 +1,22 @@
 import { DurableObject } from "cloudflare:workers";
-import { processBatch, newContext } from "./process.js";
+import { processBatch, newContext, dumpContext, loadContext } from "./process.js";
 
 // The Processor owns all detection work.
 //
 // * A Durable Object alarm chain stands in for a cron trigger (the Workers
 //   Free plan allows 5 per account). Each alarm consumes the next archived
 //   snapshots, then re-arms; /api/health (or /admin/kick) restarts the chain.
-// * Pending departures (buses waiting at the terminus) live in this object's
-//   memory, so D1 is written only when a departure is confirmed.
-// * Live processing and replays (backfill) go through one queue, so they never
-//   race each other on D1.
+// * Pending departures (buses waiting at the terminus) are kept in this
+//   object's storage as one blob per stream, written once per batch. The
+//   object is evicted between alarms, so in-memory state alone is lost every
+//   time (the first write-once version relied on it and confirmed nothing).
+// * Live processing and replays (backfill) go through one queue.
+const STREAMS = ["live", "replay"];
+
 export class Processor extends DurableObject {
-  live = newContext();
-  replay = newContext();
+  #cx = {};
   #queue = Promise.resolve();
+  #diag = { bornAt: new Date().toISOString(), liveBatches: 0, liveConfirmed: 0, lastError: null, lastErrorAt: null };
 
   #serial(fn) {
     const run = this.#queue.then(fn, fn);
@@ -21,34 +24,55 @@ export class Processor extends DurableObject {
     return run;
   }
 
+  async #context(name) {
+    if (!this.#cx[name]) this.#cx[name] = loadContext(await this.ctx.storage.get(name));
+    return this.#cx[name];
+  }
+
+  // Process one batch on a stream; persist its context only if D1 accepted the writes.
+  async #batch(name, opts) {
+    const cx = await this.#context(name);
+    try {
+      const stat = await processBatch(this.env, cx, opts);
+      const blob = dumpContext(cx);
+      await this.ctx.storage.put(name, blob);
+      stat.stateBytes = JSON.stringify(blob).length;
+      return stat;
+    } catch (err) {
+      delete this.#cx[name]; // reload the last stored state next time
+      this.#diag.lastError = `${name}: ${String(err?.message ?? err)}`;
+      this.#diag.lastErrorAt = new Date().toISOString();
+      throw err;
+    }
+  }
+
   async kick() {
     if ((await this.ctx.storage.getAlarm()) == null) await this.ctx.storage.setAlarm(Date.now() + 1000);
     return true;
   }
 
+  async state() {
+    const out = { ...this.#diag };
+    for (const n of STREAMS) {
+      const cx = await this.#context(n);
+      out[n] = { pending: cx.pending.size, done: cx.done.size, cursor: cx.cursor };
+    }
+    return out;
+  }
+
   /** One replay batch starting after `after` (backfill). */
   run({ limit, after }) {
-    return this.#serial(async () => {
-      try {
-        return await processBatch(this.env, this.replay, { limit, startAfter: after });
-      } catch (err) {
-        this.replay = newContext();
-        throw err;
-      }
-    });
+    return this.#serial(() => this.#batch("replay", { limit, startAfter: after }));
   }
 
   async alarm() {
     const every = parseInt(this.env.INTERVAL_SEC ?? "30", 10) * 1000;
     try {
       await this.#serial(async () => {
-        try {
-          const stat = await processBatch(this.env, this.live, { limit: parseInt(this.env.BATCH_SNAPSHOTS ?? "10", 10) });
-          console.log(JSON.stringify({ evt: "batch", ...stat }));
-        } catch (err) {
-          this.live = newContext(); // back to the persisted cursor
-          throw err;
-        }
+        const stat = await this.#batch("live", { limit: parseInt(this.env.BATCH_SNAPSHOTS ?? "10", 10) });
+        this.#diag.liveBatches++;
+        this.#diag.liveConfirmed += stat.confirmed;
+        console.log(JSON.stringify({ evt: "batch", ...stat }));
         await this.#maybePrune();
       });
     } catch (err) {

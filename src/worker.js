@@ -9,6 +9,7 @@ async function admin(request, env, url) {
   const auth = request.headers.get("authorization");
   if (!env.ADMIN_TOKEN || auth !== `Bearer ${env.ADMIN_TOKEN}`) return new Response("unauthorized", { status: 401 });
   if (url.pathname === "/admin/kick") return Response.json({ armed: await kick(env) });
+  if (url.pathname === "/admin/state") return Response.json(await processor(env).state());
   if (url.pathname === "/admin/run") {
     const limit = Math.min(40, parseInt(url.searchParams.get("limit") ?? "20", 10) || 20);
     const after = url.searchParams.get("after") ?? undefined;

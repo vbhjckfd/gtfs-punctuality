@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { processBatch, newContext } from "../src/process.js";
+import { processBatch, newContext, dumpContext, loadContext } from "../src/process.js";
 
 // --- tiny GTFS-RT encoder (same as pb.test.js) ---
 const varint = (n) => { const o = []; while (n >= 128) { o.push((n % 128) | 128); n = Math.floor(n / 128); } o.push(n); return o; };
@@ -49,9 +49,18 @@ function fakeEnv(objects) {
   const DB = {
     prepare: stmt,
     async batch(stmts) {
+      let changes = 0;
       for (const st of stmts) {
-        writes.push(st.sql.split("(")[0].trim());
-        if (st.sql.startsWith("INSERT OR IGNORE INTO departures")) departures.push(st.args);
+        const name = st.sql.split("(")[0].trim();
+        if (st.sql.startsWith("INSERT OR IGNORE INTO departures")) {
+          const key = st.args.slice(0, 3).join("|");
+          changes = departures.some((d) => d.slice(0, 3).join("|") === key) ? 0 : 1;
+          if (changes) departures.push(st.args);
+        } else if (st.sql.includes("WHERE changes() = 1")) {
+          if (!changes) continue;
+          changes = 1;
+        } else changes = 1;
+        writes.push(name);
       }
     },
   };
@@ -80,9 +89,24 @@ describe("processBatch", () => {
     expect(cx.pending.size).toBe(0);
   });
 
-  it("does not count a departure again when the same snapshots are replayed", async () => {
+  it("survives an eviction between every batch via the stored context", async () => {
     const objs = snapshots();
     const { env, departures } = fakeEnv(objs);
+    let stored = null;
+    let after = "raw/2026-07-01/";
+    for (;;) {
+      const cx = loadContext(stored && JSON.parse(JSON.stringify(stored))); // fresh instance each batch
+      const st = await processBatch(env, cx, { limit: 7, startAfter: after });
+      stored = dumpContext(cx);
+      if (!st.snapshots) break;
+      after = st.cursor;
+    }
+    expect(departures).toHaveLength(1);
+  });
+
+  it("does not count a departure again when the same snapshots are replayed", async () => {
+    const objs = snapshots();
+    const { env, departures, writes } = fakeEnv(objs);
     for (let round = 0; round < 2; round++) {
       const cx = newContext(); // fresh memory, as after an eviction
       let after = "raw/2026-07-01/";
@@ -93,5 +117,8 @@ describe("processBatch", () => {
       }
     }
     expect(departures).toHaveLength(1);
+    // the second round's increments were skipped by the changes() guard
+    expect(writes.filter((w) => w === "INSERT INTO hist")).toHaveLength(1);
+    expect(writes.filter((w) => w === "INSERT INTO hist_hour")).toHaveLength(1);
   });
 });

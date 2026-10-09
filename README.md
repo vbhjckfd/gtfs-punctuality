@@ -89,14 +89,14 @@ Departures are matched with the schedule currently in D1, so replay only days co
 
 D1 Free allows **100k rows written and 5M rows read per day, per account**. The first version stored every waiting bus in D1 and rewrote its row on each 30-second batch: ~20 writes per departure, 313k writes on the first day, and D1 writes were blocked until midnight UTC. Now:
 
-* a waiting bus lives only in the Processor Durable Object's memory; D1 sees one `INSERT` per **confirmed** departure (+1 index row), plus histogram increments merged per batch;
-* keys of already-confirmed departures (for loop routes that return to their first stop) are loaded into memory once per ~18 h window, not queried per batch;
+* a waiting bus lives in the Processor Durable Object's own storage, saved as one blob per batch (one storage row write, whatever the number of buses). Memory alone is not enough: the object is evicted between 30 s alarms, and the version that relied on memory confirmed nothing;
+* D1 sees one `INSERT OR IGNORE` per **confirmed** departure (+1 index row) and its two histogram increments, which run only `WHERE changes() = 1`. A replayed batch or a lost context therefore can't count a departure twice, and nothing has to be read back from D1 to check;
 * the live cursor and coverage counters are flushed every few minutes, or together with a departure write;
 * backfill runs through the same Durable Object queue as the live loop, so the two never race.
 
 Budget: roughly 4–5 rows written per departure, ~20–25k rows a day live. Leave headroom before backfilling: one replayed day costs about the same as one live day.
 
-If the object is evicted (a deploy, say), pending states are lost. Buses already waiting are picked up again at their next fix inside the radius; only a bus that leaves right after the restart goes unmeasured.
+`GET /admin/state` (with the token) shows the stored contexts: pending buses, recently confirmed keys and cursor per stream, plus the instance's `bornAt`.
 
 ## Why no cron trigger
 

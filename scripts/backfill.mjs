@@ -22,7 +22,16 @@ const stop = `raw/${to}/~`;
 let total = 0, confirmed = 0, limit = 12, fails = 0;
 const maxLimit = 30;
 for (;;) {
-  const res = await fetch(`${base}/admin/run?limit=${limit}&after=${encodeURIComponent(after)}`, { headers });
+  let res;
+  try {
+    res = await fetch(`${base}/admin/run?limit=${limit}&after=${encodeURIComponent(after)}`, { headers, signal: AbortSignal.timeout(60_000) });
+  } catch (err) {
+    // network drop, laptop sleep, hung request: wait and retry the same batch
+    if (++fails > 60) throw err;
+    console.error(`network error at ${after}: ${err.cause?.code ?? err.name}; retrying`);
+    await new Promise((r) => setTimeout(r, 10_000));
+    continue;
+  }
   if (!res.ok) {
     const body = await res.text();
     // D1 daily quota: retrying only burns requests until 00:00 UTC
