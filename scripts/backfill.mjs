@@ -5,6 +5,7 @@
 //
 // To resume an interrupted run, pass the last key it printed instead of the
 // start date: … backfill.mjs <url> raw/2026-10-03/2026-10-03T05:11:21.903Z.pb 2026-10-03
+// The end may be a key too: … backfill.mjs <url> 2026-10-09 raw/2026-10-09/2026-10-09T09:23
 //
 // Departures are matched against the schedule currently in D1, so only replay
 // days that fall under the same static feed.
@@ -18,7 +19,8 @@ if (!base || !from || !token) {
 const headers = { authorization: `Bearer ${token}` };
 const resume = from.startsWith("raw/");
 let after = resume ? from : `raw/${from}/`;
-const stop = `raw/${to}/~`;
+// `to` may also be an exact key, to stop mid-day (e.g. where the live loop took over)
+const stop = to.startsWith("raw/") ? to : `raw/${to}/~`;
 let total = 0, confirmed = 0, limit = 12, fails = 0;
 const maxLimit = 30;
 for (;;) {
