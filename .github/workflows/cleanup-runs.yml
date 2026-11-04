@@ -24,12 +24,25 @@ jobs:
         run: |
           cutoff=$(date -u -d "$KEEP_DAYS days ago" +%Y-%m-%dT%H:%M:%SZ)
           echo "Deleting completed runs created before $cutoff"
-          # The API returns at most 1000 results per query, so repeat until none are left.
+          # A single DELETE sometimes fails with an empty 5xx body; retry it, and
+          # leave anything still stuck for tomorrow instead of failing the job.
+          del() {
+            for i in 1 2 3; do
+              gh api -X DELETE "repos/$REPO/actions/runs/$1" --silent && return 0
+              sleep $((i * 5))
+            done
+            echo "::warning::could not delete run $1"
+          }
+          export -f del
+          # The API returns at most 1000 results per query, so repeat until none
+          # are left, or until a pass deletes nothing (only stuck runs remain).
+          prev=-1
           while :; do
             gh api --paginate "repos/$REPO/actions/runs?status=completed&created=<$cutoff&per_page=100" \
               --jq '.workflow_runs[].id' > ids.txt
             n=$(wc -l < ids.txt)
             echo "$n runs to delete"
-            [ "$n" -eq 0 ] && break
-            xargs -P 8 -I{} gh api -X DELETE "repos/$REPO/actions/runs/{}" --silent < ids.txt
+            [ "$n" -eq 0 ] || [ "$n" -eq "$prev" ] && break
+            prev=$n
+            xargs -P 8 -I{} bash -c 'del "$1"' _ {} < ids.txt
           done
