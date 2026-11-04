@@ -17,7 +17,7 @@
     "backfill": "node scripts/backfill.mjs"
   },
   "devDependencies": {
-    "vitest": "^4.1.10",
-    "wrangler": "^4.115.0"
+    "vitest": "^4.1.12",
+    "wrangler": "^4.157.0"
   }
 }
