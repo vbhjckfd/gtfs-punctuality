@@ -42,3 +42,9 @@ a { color: inherit; }
 #tip { position: fixed; z-index: 10; pointer-events: none; white-space: pre; background: var(--ink); color: var(--bg); padding: 6px 9px; border-radius: 6px; font-size: 0.8rem; line-height: 1.35; box-shadow: 0 2px 8px rgb(0 0 0 / 0.25); }
 #tip[hidden] { display: none; }
 .kpi .v.muted-v { color: var(--muted); }
+.top { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.langs { display: flex; gap: 6px; flex-shrink: 0; padding-top: 4px; }
+.langs button { padding: 3px; line-height: 0; border-radius: 6px; opacity: 0.45; }
+.langs button[aria-pressed="true"] { opacity: 1; border-color: var(--muted); }
+.langs button:hover { opacity: 1; }
+.langs svg { width: 28px; height: 18px; display: block; border-radius: 2px; }
