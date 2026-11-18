@@ -6,9 +6,10 @@
     make og                  # or: make og BASE=<url>; default https://punctuality.lad.lviv.ua
 
 The numbers are baked in; re-run and deploy to refresh them.
+Also stamps og.png?v=<today> into public/index.html so share caches refetch.
 Fonts are Inter subsets (SIL OFL, see og-fonts/OFL.txt).
 """
-import sys, json, pathlib, urllib.request
+import sys, re, json, datetime, pathlib, urllib.request
 from PIL import Image, ImageDraw, ImageFont
 HERE = pathlib.Path(__file__).resolve().parent
 F, out = HERE / "og-fonts", HERE.parent / "public" / "og.png"
@@ -50,3 +51,7 @@ for b, lab in [(-15, "-15 min"), (0, "0"), (15, "+15 min")]:
 d.text((x0, yb - ht - 40), "early", font=med(22), fill=EARLY)
 d.text((x1 - d.textlength("late", font=med(22)), yb - ht - 40), "late", font=med(22), fill=LATE)
 img.save(out, optimize=True)
+# point share caches at the fresh image
+page = out.parent / "index.html"
+v = datetime.date.today().isoformat()
+page.write_text(re.sub(r"/og\.png(\?v=[^\"']*)?", f"/og.png?v={v}", page.read_text()))
