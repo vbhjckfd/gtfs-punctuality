@@ -3,7 +3,7 @@
 # ///
 """Render public/og.png (1200x630 share image) from the live /api/summary.
 
-    uv run scripts/og.py [base-url]   # default https://punctuality.lad.lviv.ua
+    make og                  # or: make og BASE=<url>; default https://punctuality.lad.lviv.ua
 
 The numbers are baked in; re-run and deploy to refresh them.
 Fonts are Inter subsets (SIL OFL, see og-fonts/OFL.txt).

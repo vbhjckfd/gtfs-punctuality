@@ -196,7 +196,7 @@ The Workers Free plan allows five cron triggers per account. A Durable Object al
 ```sh
 npm test      # detection state machine, protobuf decoder, Kyiv time, stats
 npm run dev   # wrangler dev
-uv run scripts/og.py   # re-render public/og.png (share image) from live /api/summary
+make og               # re-render public/og.png (share image) from live /api/summary
 ```
 
 UI strings for both languages are in [`public/i18n.js`](public/i18n.js); the static markup refers to them through `data-i18n` attributes.
