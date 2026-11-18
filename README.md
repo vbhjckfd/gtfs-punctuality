@@ -4,6 +4,8 @@
 
 How late (or early) do Lviv buses really leave the terminus, compared with the **GTFS static timetable**?
 
+Live dashboard: **https://punctuality.lad.lviv.ua/**
+
 Built from the vehicle-position snapshots that [`gtfs-collector`](https://github.com/vbhjckfd/gtfs-collector) archives to Cloudflare R2. Runs entirely on Cloudflare (Workers + D1 + Durable Objects) and fits the free plan. The dashboard is in English and Ukrainian; the flags in the top corner switch between them, and the choice is remembered in the browser.
 
 ```

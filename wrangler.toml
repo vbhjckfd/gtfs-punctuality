@@ -1,6 +1,8 @@
 name = "gtfs-punctuality"
 main = "src/worker.js"
 compatibility_date = "2026-06-01"
+workers_dev = true
+routes = [{ pattern = "punctuality.lad.lviv.ua", custom_domain = true }]
 
 # Dashboard (public/) is served from the edge; only /api/* and /admin/* reach the script.
 [assets]
