@@ -198,4 +198,6 @@ npm run dev   # wrangler dev
 
 Рядки інтерфейсу обома мовами — у [`public/i18n.js`](public/i18n.js); статична розмітка посилається на них через атрибути `data-i18n`.
 
-WTFPL.
+## Ліцензія
+
+Код: [MIT](LICENSE). Опублікована статистика: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), зазначайте **lad.lviv.ua**. GTFS static і позиції транспорту належать львівському перевізникові.

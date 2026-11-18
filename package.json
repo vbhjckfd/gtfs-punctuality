@@ -4,7 +4,7 @@
   "description": "How late (or early) Lviv buses actually leave the terminus compared with the GTFS static timetable. Cloudflare Workers + D1.",
   "type": "module",
   "private": true,
-  "license": "WTFPL",
+  "license": "MIT",
   "engines": { "node": ">=22" },
   "repository": { "type": "git", "url": "git+https://github.com/vbhjckfd/gtfs-punctuality.git" },
   "scripts": {

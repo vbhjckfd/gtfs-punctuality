@@ -198,4 +198,6 @@ npm run dev   # wrangler dev
 
 UI strings for both languages are in [`public/i18n.js`](public/i18n.js); the static markup refers to them through `data-i18n` attributes.
 
-WTFPL.
+## Licence
+
+Code: [MIT](LICENSE). Published statistics: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), credit **lad.lviv.ua**. GTFS static and vehicle positions belong to the Lviv operator.
