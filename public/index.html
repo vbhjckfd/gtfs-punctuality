@@ -4,7 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lviv departure punctuality</title>
-<meta name="description" content="How late or early Lviv buses really leave the terminus, compared with the GTFS timetable.">
+<meta name="description" content="How late or early Lviv buses and trams really leave the terminus, measured from live GTFS-RT vehicle positions against the GTFS timetable. Updated every minute.">
+<link rel="canonical" href="https://punctuality.lad.lviv.ua/">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141412" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="lad.lviv.ua">
+<meta property="og:url" content="https://punctuality.lad.lviv.ua/">
+<meta property="og:title" content="Do Lviv buses leave on time? Terminus punctuality">
+<meta property="og:description" content="Lviv terminus departures vs the GTFS timetable: on-time, early and late shares by route, hour and day, from live vehicle positions.">
+<meta property="og:locale" content="en_GB">
+<meta property="og:locale:alternate" content="uk_UA">
+<meta property="og:image" content="https://punctuality.lad.lviv.ua/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Histogram of Lviv terminus departure error over 30 days: a tall green peak at zero, a long blue tail of early departures and a shorter red tail of late ones.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Do Lviv buses leave on time? Terminus punctuality">
+<meta name="twitter:description" content="Lviv terminus departures vs the GTFS timetable: on-time, early and late shares by route, hour and day, from live vehicle positions.">
+<meta name="twitter:image" content="https://punctuality.lad.lviv.ua/og.png">
+<meta name="twitter:image:alt" content="Histogram of Lviv terminus departure error over 30 days: a tall green peak at zero, a long blue tail of early departures and a shorter red tail of late ones.">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Dataset","name":"Lviv public transport departure punctuality","description":"How late or early Lviv buses and trams really leave the terminus, measured from live GTFS-RT vehicle positions against the GTFS timetable. Updated every minute.","url":"https://punctuality.lad.lviv.ua/","license":"https://creativecommons.org/licenses/by/4.0/","creator":{"@type":"Person","name":"Myroslav Holyak"},"spatialCoverage":"Lviv, Ukraine","isAccessibleForFree":true,"distribution":[{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"https://punctuality.lad.lviv.ua/api/summary"}]}
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
