@@ -109,7 +109,7 @@ API публічне, з дозволеним CORS і кешем на 60 с:
 | `/api/summary?days=7[&route=<route_id>]` | `total`, `histogram` (`{bin, n}`), `byDay`, `byHour`, `byMode`, `routes` (кожен із `n`, `unmatched`, `unmatchedShare`, `medianMin`, `p10Min`, `p90Min`, `meanMin`, `early`, `onTime`, `late`), `coverage`, `thresholds`; `days` ≤ 90 |
 | `/api/recent?limit=50[&route=<route_id>]` | рядки окремих відправлень (`trip_id`, `vehicle_id`, `route_id`, `short_name`, `headsign`, `planned_ts`, `actual_ts`, `delta_s`, Unix-секунди), `limit` ≤ 200 |
 
-Маючи доступ до облікового запису Cloudflare, сирі рядки можна запитувати напряму (рядки окремих відправлень зберігаються 45 днів, гістограми — назавжди):
+Маючи доступ до облікового запису Cloudflare, сирі рядки можна запитувати напряму (рядки окремих відправлень зберігаються 7 днів, гістограми — назавжди):
 
 ```sh
 npx wrangler d1 execute punctuality --remote --command \
@@ -188,7 +188,7 @@ D1 Free дозволяє **100 тис. записаних і 5 млн прочи
 
 * На безкоштовному тарифі CPU — 10 мс на виклик; саме тому `BATCH_SNAPSHOTS` невеликий. На платному тарифі його можна збільшити, щоб швидше наздоганяти.
 * `caches.default` не працює на `*.workers.dev`; відповіді API також запам'ятовуються в межах ізолята на 60 с. На власному домені цю роль бере на себе кеш на edge.
-* Рядки `departures` видаляються через `KEEP_DEPARTURE_DAYS` (45) днів; гістограми зберігаються.
+* Рядки `departures` видаляються через `KEEP_DEPARTURE_DAYS` (7) днів; гістограми зберігаються.
 * Затримка вимірюється лише на першій зупинці. Пунктуальність на маршруті — окреме питання (див. [gtfs-eta](https://github.com/vbhjckfd/gtfs-eta)).
 
 ## Розробка

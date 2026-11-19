@@ -109,7 +109,7 @@ The API is public, CORS-enabled and cached for 60 s:
 | `/api/summary?days=7[&route=<route_id>]` | `total`, `histogram` (`{bin, n}`), `byDay`, `byHour`, `byMode`, `routes` (each with `n`, `unmatched`, `unmatchedShare`, `medianMin`, `p10Min`, `p90Min`, `meanMin`, `early`, `onTime`, `late`), `coverage`, `thresholds`; `days` ≤ 90 |
 | `/api/recent?limit=50[&route=<route_id>]` | per-departure rows (`trip_id`, `vehicle_id`, `route_id`, `short_name`, `headsign`, `planned_ts`, `actual_ts`, `delta_s`, Unix seconds), `limit` ≤ 200 |
 
-With access to the Cloudflare account, the raw rows can be queried directly (per-departure rows are kept for 45 days, the histograms forever):
+With access to the Cloudflare account, the raw rows can be queried directly (per-departure rows are kept for 7 days, the histograms forever):
 
 ```sh
 npx wrangler d1 execute punctuality --remote --command \
@@ -188,7 +188,7 @@ The Workers Free plan allows five cron triggers per account. A Durable Object al
 
 * Free plan CPU is 10 ms per invocation; `BATCH_SNAPSHOTS` is kept small for that reason. Raise it on a paid plan to catch up faster.
 * `caches.default` is a no-op on `*.workers.dev`; API responses are also memoised per isolate for 60 s. On a custom domain the edge cache takes over.
-* `departures` rows are pruned after `KEEP_DEPARTURE_DAYS` (45); the histograms are kept.
+* `departures` rows are pruned after `KEEP_DEPARTURE_DAYS` (7); the histograms are kept.
 * Delay is only measured at the first stop. Mid-route punctuality is a different question (see [gtfs-eta](https://github.com/vbhjckfd/gtfs-eta)).
 
 ## Development

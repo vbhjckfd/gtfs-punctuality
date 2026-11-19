@@ -34,7 +34,7 @@ new_sqlite_classes = ["Processor"]
 [vars]
 INTERVAL_SEC = "30"
 BATCH_SNAPSHOTS = "10"       # snapshots consumed per alarm (~3 arrive per 30 s)
-KEEP_DEPARTURE_DAYS = "45"   # per-departure rows; the aggregates are kept forever
+KEEP_DEPARTURE_DAYS = "7"    # per-departure rows; the aggregates are kept forever
 
 [observability]
 enabled = true
